@@ -1,0 +1,188 @@
+---
+title: "Replication of \"Anti-Immigrant Rhetoric and ICE Reporting Interest: Evidence
+  from a Large-Scale Study of Web Search Data\" paper"
+author: "Ubaydul Sami"
+date: "2024-06-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(scales)
+library(tidyverse)
+library(knitr)
+library(dplyr)
+library(modelr)
+library(scales)
+library(readr)
+```
+
+```{r}
+
+google_term_data <- read.csv('from_google_trends/google_3_terms_trend_data_04_20.csv', header = TRUE, sep= ",", skip = 2, col.names = c('ymd', 'immigr_report', 'immigr_crime', 'immigr_welfare'))
+
+head(google_term_data)
+```
+# Figure 4 from paper
+```{r}
+google_term_data <- 
+  google_term_data |>
+  mutate(ymd = as.Date(paste0(ymd, "-01")))|>
+  mutate(year = year(ymd), month = month(ymd)) |>
+  mutate(president = ifelse(year<=2008, "bush", 
+                      ifelse(year>2008 & year <= 2016, "obama", "trump")))
+```
+
+```{r}
+google_term_data |> 
+  ggplot(aes(x = ymd, y= immigr_report, colour = president)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Time Line") +
+  ylab("Immigration Report Search Trend") +
+  ggtitle("Immigration Report Search Trend on Google Trend Data")
+```
+```{r}
+google_term_data |> 
+  ggplot(aes(x = ymd, y= immigr_crime, colour = president)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Time Line") +
+  ylab("Immigration Crime Search Trend") +
+  ggtitle("Immigration Crime Search Trend on Google Trend Data")
+```
+
+
+```{r}
+google_term_data |> 
+  ggplot(aes(x = ymd, y= immigr_welfare, colour = president)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Time Line") +
+  ylab("Immigration Welfare Search Trend") +
+  ggtitle("Immigration Welfare Search Trend on Google Trend Data")
+```
+
+
+# Table 3 of the paper
+```{r}
+library(stargazer)
+library(fastDummies)
+```
+
+
+```{r}
+google_term_data <-
+  google_term_data |>
+  mutate(president = as.factor(president))
+
+google_term_data_dummies <- dummy_cols(google_term_data, select_columns = "president", remove_first_dummy = FALSE)
+
+head(google_term_data_dummies)
+```
+```{r}
+model_crime <- lm(immigr_crime ~ (ymd + president_bush + president_trump + president_obama), data = google_term_data_dummies)
+model_welfare <- lm(immigr_welfare ~ (ymd + president_bush + president_trump + president_obama), data = google_term_data_dummies)
+model_report <- lm(immigr_report ~ (ymd + president_bush + president_trump + president_obama ), data = google_term_data_dummies)
+
+```
+```{r}
+stargazer(model_crime, model_welfare, model_report,
+          title = "Table 3 OLS",
+          dep.var.labels = c("Crime", "Welfare", "Report"),
+          
+          out = "table3_ols.html", # Save to HTML file
+          type = "text", # You can also use "html" or "latex"
+          intercept.bottom = FALSE,
+          omit.stat = c("ser", "adj.rsq", "f", "aic"),
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01")
+```
+
+# Figure 2 from paper
+```{r}
+library(stm)
+load("from_replication_files/TopicModel.RData")
+document_topics <- make.dt(immigrFit, meta = out$meta)
+topic_terms <- t(exp(immigrFit$beta$logbeta[[1]]))
+rownames(topic_terms) <- out$vocab
+colnames(topic_terms) <- sprintf("Topic%d", 1:ncol(topic_terms))
+```
+```{r}
+document_topics_figure <- document_topics |>
+  mutate(date = as.Date(date),
+         year_month = ym(format(date, "%Y-%m")))
+```
+
+```{r}
+# document_topics_figure |>
+#   select(year_month, channel,duration, time) |>
+#   group_by(year_month, channel, time) |>
+#   summarise(air_count= sum(duration)) |> 
+#   ggplot(aes(x = year_month, y = air_count, colour = channel)) +
+#   geom_point()
+```
+
+
+```{r}
+
+time_lines <- document_topics_figure |>
+  select(time, year_month) |>
+  group_by(time) |>
+  summarise(year_month = min(year_month))
+
+
+document_topics_figure |>
+  select(year_month, channel,duration, time) |>
+  group_by(year_month, channel, time) |>
+  summarise(air_count= sum(duration)) |>
+  ungroup() |> 
+  group_by(channel, time) |> 
+  ggplot(aes(x = year_month, y = air_count, color = channel, group = interaction(channel, time))) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Year") +
+  ylab("Num Monthly Immigration Segment") +
+  ggtitle("Immigration news segments")
+
+```
+
+# Figure 3
+
+```{r}
+document_topics_figure <- document_topics_figure |>
+  select(date, Topic1, Topic3, Topic13,year_month, channel, duration, time)
+  
+```
+
+```{r}
+document_topics_figure |>
+  group_by(year_month, channel, time) |>
+  summarise(topic1_seg = sum((Topic1 +Topic3)*duration )) |>
+  ggplot(aes(x = year_month, y = topic1_seg, color = channel, group = interaction(channel, time))) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Year") +
+  ylab("Immigration Crime News Coverage") +
+  ggtitle("Immigration news segments by Topic 'Immigration Crime'")
+```
+
+```{r}
+document_topics_figure |>
+  group_by(year_month, channel, time) |>
+  summarise(topic1_seg = sum((Topic13)*duration )) |>
+  ggplot(aes(x = year_month, y = topic1_seg, color = channel, group = interaction(channel, time))) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Year") +
+  ylab("Immigration Welfare News Coverage") +
+  ggtitle("Immigration news segments by Topic 'Immigration Welfare'")
+```
+# Table 4 from paper:
+
+```{r}
+
+```
+
