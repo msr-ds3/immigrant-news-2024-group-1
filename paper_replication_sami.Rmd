@@ -77,7 +77,8 @@ library(fastDummies)
 ```{r}
 google_term_data <-
   google_term_data |>
-  mutate(president = as.factor(president))
+  mutate(president = as.factor(president),
+         president = relevel(president, ref = "obama"))
 
 google_term_data_dummies <- dummy_cols(google_term_data, select_columns = "president", remove_first_dummy = FALSE)
 
@@ -89,6 +90,14 @@ model_welfare <- lm(immigr_welfare ~ (ymd + president_bush + president_trump + p
 model_report <- lm(immigr_report ~ (ymd + president_bush + president_trump + president_obama ), data = google_term_data_dummies)
 
 ```
+
+```{r}
+model_crime2 <- lm(immigr_crime ~ ymd + president, data = google_term_data_dummies)
+model_welfare2 <- lm(immigr_welfare ~ (ymd + president), data = google_term_data_dummies)
+model_report2 <- lm(immigr_report ~ (ymd + president), data = google_term_data_dummies)
+```
+
+# with dummies
 ```{r}
 stargazer(model_crime, model_welfare, model_report,
           title = "Table 3 OLS",
@@ -98,7 +107,20 @@ stargazer(model_crime, model_welfare, model_report,
           type = "text", # You can also use "html" or "latex"
           intercept.bottom = FALSE,
           omit.stat = c("ser", "adj.rsq", "f", "aic"),
-          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01")
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
+```
+# with factored variable
+
+```{r}
+stargazer(model_crime2, model_welfare2, model_report2,
+          title = "Table 3 OLS",
+          dep.var.labels = c("Crime", "Welfare", "Report"),
+          
+          out = "table3_ols.html", # Save to HTML file
+          type = "text", # You can also use "html" or "latex"
+          intercept.bottom = FALSE,
+          omit.stat = c("ser", "adj.rsq", "f", "aic"),
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
 ```
 
 # Figure 2 from paper
@@ -180,9 +202,123 @@ document_topics_figure |>
   ylab("Immigration Welfare News Coverage") +
   ggtitle("Immigration news segments by Topic 'Immigration Welfare'")
 ```
-# Table 4 from paper:
+# Table 4 from paper (by month):
+
+```{r}
+head(google_term_data_dummies)
+```
+
+```{r}
+google_term_data_table4 <- google_term_data_dummies|> 
+  mutate(month= as.factor(month), president_trump= as.factor(president_trump)) |>
+  # filter(president_trump == 1) |>
+  select(ymd, month, immigr_report, president_trump)
+
+head(google_term_data_table4)
+```
+```{r}
+head(document_topics_figure)
+```
+```{r}
+document_topics_table4 <- 
+  document_topics_figure |>
+  mutate(crime = Topic1 + Topic3, welfare = Topic13, ymd = year_month) |>
+  # select(crime, welfare, ymd) |>
+  group_by(ymd) |>
+  summarise(
+    segs = n(), 
+    crime_prop = mean(crime), 
+    welfare_prop = mean(welfare))|> view()
+
+head(document_topics_table4)
+```
+```{r}
+df_table4_month <- left_join(document_topics_table4, google_term_data_table4, by = "ymd")
+
+head(df_table4_month)
+```
+
+
+```{r}
+set.seed (1)
+model_report_table4_month <- lm(immigr_report ~ (segs  + crime_prop + welfare_prop + president_trump + ymd + month ), data = df_table4_month)
+summary(model_report_table4_month)
+```
+```{r}
+stargazer(model_report_table4_month,
+          title = "Table 4 OLS",
+          dep.var.labels = c("Report"),
+          
+          out = "table4_ols.html", # Save to HTML file
+          type = "text", # You can also use "html" or "latex"
+          intercept.bottom = FALSE,
+          omit.stat = c("ser", "adj.rsq", "f", "aic"),
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
+```
+# Table 4 from paper (by day):
+
+```{r}
+daily_report <- read.csv('from_replication_files/gt_report_daily.csv')
+head(daily_report)
+
+
+```
 
 ```{r}
 
 ```
 
+```{r}
+head(daily_report)
+```
+
+```{r}
+daily_report_table4 <- 
+  daily_report|> 
+  mutate( date= as.Date(date), president_trump= ifelse(date< "2017-01-01", 0, 1), president_trump = as.factor(president_trump)) |>
+  select(-X)
+
+head(daily_report_table4)
+```
+```{r}
+head(document_topics_figure)
+```
+```{r}
+document_topics_table4_day <- 
+  document_topics_figure |>
+  mutate(crime = Topic1 + Topic3, welfare = Topic13) |>
+  group_by(date) |>
+  summarise(
+    segs = n(), 
+    crime_prop = mean(crime), 
+    welfare_prop = mean(welfare))|> view()
+
+head(document_topics_table4_day)
+```
+```{r}
+df_table4_day <- left_join(document_topics_table4_day, daily_report_table4, by = "date")
+
+df_table4_day <- df_table4_day |>
+  mutate( month = month(date), day_of_week = weekdays(date), 
+          day_of_week = as.factor(day_of_week), month = as.factor(month)) 
+
+head(df_table4_day)
+```
+
+
+```{r}
+set.seed (1)
+model_report_table4_day <- lm(search ~ (segs  + crime_prop + welfare_prop + president_trump + date + day_of_week+ month ), data = df_table4_day)
+summary(model_report_table4_day)
+```
+```{r}
+stargazer(model_report_table4_day,
+          title = "Table 4 OLS (per day)",
+          dep.var.labels = c("Report"),
+          
+          out = "table4_ols.html", # Save to HTML file
+          type = "text", # You can also use "html" or "latex"
+          intercept.bottom = FALSE,
+          omit.stat = c("ser", "adj.rsq", "f", "aic"),
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
+```
