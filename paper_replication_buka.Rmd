@@ -328,3 +328,70 @@ preelections %>%
   
 
 ```
+
+
+```{r}
+
+ice <-
+  read_csv("ice_reportings.csv", skip = 4, col_names = c("year", "month", "reports", "reports_convicted", "", "", "", "reports_non_criminal", "", "")) %>%
+  select(c(1, 2, 3, 4, 8)) %>%
+  fill(year, .direction = "down") %>% 
+  filter(month != "Total") %>%
+  mutate(
+    month = match(month, month.name),
+    date = make_date(year, month)
+  )
+
+```
+
+```{r}
+ice_report_w_election <- 
+  ice |>
+  filter(date <= '2020-01-01') |> 
+  rename( year_month = date) |>
+  # select(year_month, year, month, president, immigr_report ) |>
+  arrange(year_month) |>
+  left_join(time_lines, by = "year_month") |>
+  fill(time, .direction = c("down")) |>  view()
+ 
+head(ice_report_w_election)
+```
+
+
+```{r}
+
+ice_report_w_election %>%
+  ggplot(aes(x = year_month, y = reports, colour = time)) + 
+  geom_point() +
+  geom_smooth(se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Month") +
+  ylab("Arrests") +
+  ggtitle("Total Immigration-Related Arrests By Month")
+
+
+ice_report_w_election %>%
+  ggplot(aes(x = year_month, y = reports_convicted, colour = time)) + 
+  geom_point() +
+  geom_smooth(se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Month") +
+  ylab("Arrests") +
+  ggtitle("Arrested Immigrants Who Were Actually Convicts By Month")
+
+
+ice_report_w_election %>%
+  ggplot(aes(x = year_month, y = reports_non_criminal, colour = time)) + 
+  geom_point() +
+  geom_smooth(se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Month") +
+  ylab("Arrests") +
+  ggtitle("Arrested Immigrants Who Were Not Convicts By Month")
+
+```
+
+The paper suggests that anti-immigrant searches likely result in actual ICE denunciations and that an increase in media coverage of anti-immigrant topics was correlated with an increase in searches. They show higher rates of coverage during Trumps campaign and post-inauguration. We expected the number of immigrant arrests to follow a similar pattern, but using data from the Department of Homeland Security, we observe higher amounts of arrests pre-campaign, a lower number during the campaign, then a spike in numbers post-inauguration.
+
+
+
