@@ -1,9 +1,11 @@
 ---
 title: "Replication of \"Anti-Immigrant Rhetoric and ICE Reporting Interest: Evidence
   from a Large-Scale Study of Web Search Data\" paper"
-author: "Ubaydul Sami"
+author: "Ubaydul Sami and Buka Dikeocha"
 date: "2024-06-24"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -322,3 +324,105 @@ stargazer(model_report_table4_day,
           omit.stat = c("ser", "adj.rsq", "f", "aic"),
           notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
 ```
+# Extension
+
+## The paper shows increase in search of how to report of immigration violation but doesn't show if there were actual increase in number of reports / arrest/ deportation for immigration violation. For our research question we decided to find out if there was any increase of actual number of reports / arrest/ deportation for immigration violation. 
+
+
+**data source :** https://www.dhs.gov/ohss/topics/immigration/enforcement-and-legal-processes-monthly-tables
+
+**link to data file:** https://onedrive.live.com/edit?id=6779012659AEA485%21120&resid=6779012659AEA485%21120&ithint=file%2Cxlsx&wdPreviousSession=2e2e85d3-ac39-43da-899d-f01ad6e066a7&wdo=2&cid=6779012659aea485
+
+```{r}
+
+```
+
+```{r}
+google_term_data_report_extend <- 
+  google_term_data_dummies |>
+  filter(ymd >= '2014-01-01') |> 
+  rename( year_month = ymd) |>
+  select(year_month, year, month, president, immigr_report ) |>
+  left_join(time_lines, by = "year_month") |>
+  fill(time, .direction = c("down")) |> view()
+
+head(google_term_data_report_extend)
+```
+
+```{r}
+google_term_data_report_extend |>
+  ggplot(aes(x = year_month, y = immigr_report, colour = time)) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Year-month") +
+  ylab("Immigration Reports search count") +
+  ggtitle("Immigration report search")
+```
+
+
+```{r}
+
+ice <-
+  read_csv("from_google_trends/ice_reportings.csv", skip = 4, col_names = c("year", "month", "reports", "reports_convicted", "", "", "", "reports_non_criminal", "", "")) %>%
+  select(c(1, 2, 3, 4, 8)) %>%
+  fill(year, .direction = "down") %>% 
+  filter(month != "Total") %>%
+  mutate(
+    month = match(month, month.name),
+    date = make_date(year, month)
+  )
+
+```
+
+```{r}
+ice_report_w_election <- 
+  ice |>
+  filter(date <= '2020-01-01') |> 
+  rename( year_month = date) |>
+  # select(year_month, year, month, president, immigr_report ) |>
+  arrange(year_month) |>
+  left_join(time_lines, by = "year_month") |>
+  fill(time, .direction = c("down")) |>  view()
+ 
+head(ice_report_w_election)
+```
+
+
+```{r}
+ice_report_w_election %>%
+  ggplot(aes(x = year_month, y = reports, colour = time)) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+
+  xlab("Year-month") +
+
+  ylab("Total Immigration Arrest") +
+
+  ggtitle("Total Immigration Arrest by Year")
+
+
+ice_report_w_election %>%
+  ggplot(aes(x = year_month, y = reports_convicted, colour = time)) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+
+  xlab("Year-month") +
+
+  ylab("Convicted Immigration Arrest") +
+
+  ggtitle("Convicted Immigration Arrest by Year")
+
+ice_report_w_election %>%
+  ggplot(aes(x = year_month, y = reports_non_criminal, colour = time)) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+
+  xlab("Year-month") +
+
+  ylab("Non-criminal Immigration Arrest") +
+
+  ggtitle("Non-Criminal Immigration Arrest by Year")
+
+```
+
+
