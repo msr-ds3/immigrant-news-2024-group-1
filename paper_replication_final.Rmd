@@ -1,0 +1,475 @@
+---
+title: "Replication of \"Anti-Immigrant Rhetoric and ICE Reporting Interest: Evidence
+  from a Large-Scale Study of Web Search Data\" paper"
+  
+author: "Ubaydul Sami and Buka Dikeocha"
+date: "2024-06-24"
+output:
+  html_document:
+    code_folding: hide
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+
+```
+
+```{r}
+library(scales)
+library(tidyverse)
+library(knitr)
+library(dplyr)
+library(modelr)
+library(scales)
+library(readr)
+```
+
+```{r}
+
+google_term_data <- read.csv('from_google_trends/google_3_terms_trend_data_04_20.csv', header = TRUE, sep= ",", skip = 2, col.names = c('ymd', 'immigr_report', 'immigr_crime', 'immigr_welfare'))
+
+head(google_term_data)
+```
+
+# Figure 4 from paper
+
+```{r}
+google_term_data <- 
+  google_term_data |>
+  mutate(ymd = as.Date(paste0(ymd, "-01")))|>
+  mutate(year = year(ymd), month = month(ymd)) |>
+  mutate(president = ifelse(year<=2008, "bush", 
+                      ifelse(year>2008 & year <= 2016, "obama", "trump")))
+```
+
+```{r}
+google_term_data |> 
+  ggplot(aes(x = ymd, y= immigr_report, colour = president)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Time Line") +
+  ylab("Immigration Report Search Trend") +
+  ggtitle("Immigration Report Search Trend on Google Trend Data")
+```
+
+```{r}
+google_term_data |> 
+  ggplot(aes(x = ymd, y= immigr_crime, colour = president)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Time Line") +
+  ylab("Immigration Crime Search Trend") +
+  ggtitle("Immigration Crime Search Trend on Google Trend Data")
+```
+
+```{r}
+google_term_data |> 
+  ggplot(aes(x = ymd, y= immigr_welfare, colour = president)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Time Line") +
+  ylab("Immigration Welfare Search Trend") +
+  ggtitle("Immigration Welfare Search Trend on Google Trend Data")
+```
+
+# Table 3 of the paper
+
+```{r}
+library(stargazer)
+library(fastDummies)
+```
+
+```{r}
+google_term_data <-
+  google_term_data |>
+  mutate(president = as.factor(president),
+         president = relevel(president, ref = "obama"))
+
+google_term_data_dummies <- dummy_cols(google_term_data, select_columns = "president", remove_first_dummy = FALSE)
+
+head(google_term_data_dummies)
+```
+
+```{r}
+model_crime <- lm(immigr_crime ~ (ymd + president_bush + president_trump + president_obama), data = google_term_data_dummies)
+model_welfare <- lm(immigr_welfare ~ (ymd + president_bush + president_trump + president_obama), data = google_term_data_dummies)
+model_report <- lm(immigr_report ~ (ymd + president_bush + president_trump + president_obama ), data = google_term_data_dummies)
+
+```
+
+```{r}
+model_crime2 <- lm(immigr_crime ~ ymd + president, data = google_term_data_dummies)
+model_welfare2 <- lm(immigr_welfare ~ (ymd + president), data = google_term_data_dummies)
+model_report2 <- lm(immigr_report ~ (ymd + president), data = google_term_data_dummies)
+```
+
+# with dummies
+
+```{r}
+stargazer(model_crime, model_welfare, model_report,
+          title = "Table 3 OLS",
+          dep.var.labels = c("Crime", "Welfare", "Report"),
+          
+          # out = "table3_ols.html", # Save to HTML file
+          type = "text", # You can also use "html" or "latex"
+          intercept.bottom = FALSE,
+          omit.stat = c("ser", "adj.rsq", "f", "aic"),
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
+```
+
+# with factored variable
+
+```{r}
+stargazer(model_crime2, model_welfare2, model_report2,
+          title = "Table 3 OLS",
+          dep.var.labels = c("Crime", "Welfare", "Report"),
+          
+          out = "table3_ols.html", # Save to HTML file
+          type = "text", # You can also use "html" or "latex"
+          intercept.bottom = FALSE,
+          omit.stat = c("ser", "adj.rsq", "f", "aic"),
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
+```
+
+# Figure 2 from paper
+
+```{r, warning=FALSE}
+library(stm)
+load("from_replication_files/TopicModel.Rdata")
+document_topics <- make.dt(immigrFit, meta = out$meta)
+topic_terms <- t(exp(immigrFit$beta$logbeta[[1]]))
+rownames(topic_terms) <- out$vocab
+colnames(topic_terms) <- sprintf("Topic%d", 1:ncol(topic_terms))
+```
+
+```{r}
+document_topics_figure <- document_topics |>
+  mutate(date = as.Date(date),
+         year_month = ym(format(date, "%Y-%m")))
+head(document_topics_figure)
+```
+
+```{r}
+# document_topics_figure |>
+#   select(year_month, channel,duration, time) |>
+#   group_by(year_month, channel, time) |>
+#   summarise(air_count= sum(duration)) |> 
+#   ggplot(aes(x = year_month, y = air_count, colour = channel)) +
+#   geom_point()
+```
+
+```{r}
+
+time_lines <- document_topics_figure |>
+  select(time, year_month) |>
+  group_by(time) |>
+  summarise(year_month = min(year_month))
+
+
+document_topics_figure |>
+  select(year_month, channel,duration, time) |>
+  group_by(year_month, channel, time) |>
+  summarise(air_count= sum(duration)) |>
+  ungroup() |> 
+  group_by(channel, time) |> 
+  ggplot(aes(x = year_month, y = air_count, color = channel, group = interaction(channel, time))) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Year") +
+  ylab("Num Monthly Immigration Segment") +
+  ggtitle("Immigration news segments")
+
+```
+
+# Figure 3
+
+```{r}
+document_topics_figure <- document_topics_figure |>
+  select(date, Topic1, Topic3, Topic13,year_month, channel, duration, time)
+  
+```
+
+```{r}
+document_topics_figure |>
+  group_by(year_month, channel, time) |>
+  summarise(topic1_seg = sum((Topic1 +Topic3)*duration )) |>
+  ggplot(aes(x = year_month, y = topic1_seg, color = channel, group = interaction(channel, time))) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Year") +
+  ylab("Immigration Crime News Coverage") +
+  ggtitle("Immigration news segments by Topic 'Immigration Crime'")
+```
+
+```{r}
+document_topics_figure |>
+  group_by(year_month, channel, time) |>
+  summarise(topic1_seg = sum((Topic13)*duration )) |>
+  ggplot(aes(x = year_month, y = topic1_seg, color = channel, group = interaction(channel, time))) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Year") +
+  ylab("Immigration Welfare News Coverage") +
+  ggtitle("Immigration news segments by Topic 'Immigration Welfare'")
+```
+
+# Table 4 from paper (by month):
+
+```{r}
+head(google_term_data_dummies)
+```
+
+```{r}
+google_term_data_table4 <- google_term_data_dummies|> 
+  mutate(month= as.factor(month), president_trump= as.factor(president_trump)) |>
+  # filter(president_trump == 1) |>
+  select(ymd, month, immigr_report, president_trump)
+
+head(google_term_data_table4)
+```
+
+```{r}
+head(document_topics_figure)
+```
+
+```{r}
+document_topics_table4 <- 
+  document_topics_figure |>
+  mutate(crime = Topic1 + Topic3, welfare = Topic13, ymd = year_month) |>
+  # select(crime, welfare, ymd) |>
+  group_by(ymd) |>
+  summarise(
+    segs = n(), 
+    crime_prop = mean(crime), 
+    welfare_prop = mean(welfare))
+
+head(document_topics_table4)
+```
+
+```{r}
+df_table4_month <- left_join(document_topics_table4, google_term_data_table4, by = "ymd")
+
+head(df_table4_month)
+```
+
+```{r}
+set.seed (1)
+model_report_table4_month <- lm(immigr_report ~ (segs  + crime_prop + welfare_prop + president_trump + ymd + month ), data = df_table4_month)
+summary(model_report_table4_month)
+```
+
+```{r}
+stargazer(model_report_table4_month,
+          title = "Table 4 OLS",
+          dep.var.labels = c("Report"),
+          
+          # out = "table4_ols.html", # Save to HTML file
+          type = "text", # You can also use "html" or "latex"
+          intercept.bottom = FALSE,
+          omit.stat = c("ser", "adj.rsq", "f", "aic"),
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
+```
+
+# Table 4 from paper (by day):
+
+```{r}
+daily_report <- read.csv('from_replication_files/gt_report_daily.csv')
+head(daily_report)
+
+```
+
+```{r}
+daily_report_table4 <- 
+  daily_report|> 
+  mutate( date= as.Date(date), president_trump= ifelse(date< "2017-01-01", 0, 1), president_trump = as.factor(president_trump)) |>
+  select(-X)
+
+head(daily_report_table4)
+```
+
+```{r}
+head(document_topics_figure)
+```
+
+```{r}
+document_topics_table4_day <- 
+  document_topics_figure |>
+  mutate(crime = Topic1 + Topic3, welfare = Topic13) |>
+  group_by(date) |>
+  summarise(
+    segs = n(), 
+    crime_prop = mean(crime), 
+    welfare_prop = mean(welfare))
+
+head(document_topics_table4_day)
+```
+
+```{r}
+df_table4_day <- left_join(document_topics_table4_day, daily_report_table4, by = "date")
+
+df_table4_day <- df_table4_day |>
+  mutate( month = month(date), day_of_week = weekdays(date), 
+          day_of_week = as.factor(day_of_week), month = as.factor(month)) 
+
+head(df_table4_day)
+```
+
+```{r}
+set.seed (1)
+model_report_table4_day <- lm(search ~ (segs  + crime_prop + welfare_prop + president_trump + date + day_of_week+ month ), data = df_table4_day)
+summary(model_report_table4_day)
+```
+
+```{r}
+stargazer(model_report_table4_day,
+          title = "Table 4 OLS (per day)",
+          dep.var.labels = c("Report"),
+          
+          out = "table4_ols.html", # Save to HTML file
+          type = "text", # You can also use "html" or "latex"
+          intercept.bottom = FALSE,
+          omit.stat = c("ser", "adj.rsq", "f", "aic"),
+          notes = "Note: ∗p<0.1; ∗∗p<0.05; ∗∗∗p<0.01" )
+```
+
+# Extension
+
+
+## The paper shows increase in search of how to report of immigration violation but doesn't show if there were actual increase in number of reports / arrest/ deportation for immigration violation. For our research question we decided to find out if there was any increase of actual number of reports / arrest/ deportation for immigration violation.
+
+**Data source :** <https://www.dhs.gov/ohss/topics/immigration/enforcement-and-legal-processes-monthly-tables>
+
+**Data link :** <https://onedrive.live.com/edit?id=6779012659AEA485%21120&resid=6779012659AEA485%21120&ithint=file%2Cxlsx&wdPreviousSession=2e2e85d3-ac39-43da-899d-f01ad6e066a7&wdo=2&cid=6779012659aea485>
+
+```{r}
+
+```
+
+```{r}
+google_term_data_report_extend <- 
+  google_term_data_dummies |>
+  filter(ymd >= '2014-01-01') |> 
+  rename( year_month = ymd) |>
+  select(year_month, year, month, president, immigr_report ) |>
+  left_join(time_lines, by = "year_month") |>
+  fill(time, .direction = c("down")) 
+
+head(google_term_data_report_extend)
+```
+
+## We will first see what trend the search result of "how to report immigration crime" follows
+
+```{r}
+google_term_data_report_extend |>
+  ggplot(aes(x = year_month, y = immigr_report, colour = time)) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+  xlab("Year-month") +
+  ylab("Immigration Reports search count") +
+  ggtitle("Immigration report search on Google")
+```
+
+## Now we will see what was the actual number of reporting of "immigration crime" during the given period:
+
+```{r}
+
+ice <-
+  read_csv("from_google_trends/ice_reportings.csv", skip = 4, col_names = c("year", "month", "reports", "reports_convicted", "", "", "", "reports_non_criminal", "", ""))|>
+  select(c(1, 2, 3, 4, 8))|>
+  fill(year, .direction = "down")|> 
+  filter(month != "Total")|>
+  mutate(
+    month = match(month, month.name),
+    date = make_date(year, month)
+  )
+
+```
+
+```{r}
+head(ice)
+```
+
+```{r}
+ice_report_w_election <- 
+  ice |>
+  filter(date <= '2020-01-01') |> 
+  rename( year_month = date) |>
+  # select(year_month, year, month, president, immigr_report ) |>
+  arrange(year_month) |>
+  left_join(time_lines, by = "year_month") |>
+  fill(time, .direction = c("down"))
+ 
+head(ice_report_w_election)
+```
+
+```{r}
+ice_report_w_election|>
+  ggplot(aes(x = year_month, y = reports, colour = time)) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+
+  xlab("Year-month") +
+
+  ylab("Total Immigration Arrest") +
+
+  ggtitle("Total Immigration Arrest by Year")
+
+
+ice_report_w_election|>
+  ggplot(aes(x = year_month, y = reports_convicted, colour = time)) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+
+  xlab("Year-month") +
+
+  ylab("Convicted Immigration Arrest") +
+
+  ggtitle("Convicted Immigration Arrest by Year")
+
+ice_report_w_election|>
+  ggplot(aes(x = year_month, y = reports_non_criminal, colour = time)) + 
+  geom_point() + geom_smooth( se=FALSE) +
+  geom_vline(data = time_lines, aes(xintercept = as.numeric(year_month)), linetype = "dotted", color = "black") +
+
+  xlab("Year-month") +
+
+  ylab("Non-criminal Immigration Arrest") +
+
+  ggtitle("Non-Criminal Immigration Arrest by Year")
+
+```
+
+# Paper Findings:
+
+One of the Hypothesis for the paper was ""People will have more interest in reporting immigrants when they believe the government supports deportation." that means there is more interest in immigrant denunciation when people believe that reporting will lead to some action by the government. In finding the paper suggests that, "Reporting searches (search of "how to report immigrant") increased sharply after Trump took office and that media reporting on Trump’s immigration policies during his administration (but not during the Trump campaign) is associated with more reporting searches"
+
+# Our Finding:
+
+So for research we decided to look at data from Law enforcement to see if there is a change in number of arrest of immigrants during Trumps period. We used immigrant arrest data from "Office of homeland Security" for our observation.
+
+## Our Process:
+
+We looked into the immigrant arrest data from 3 point of view, 
+
+1) Total number of immigrant arrest from January 2014 to December 2019 
+
+2) Number of Immigrant arrested for committing crime
+
+3) Number of Immigrant arrested even without committing a crime 
+
+## Observation Result
+
+**1) For Total number of arrest & for immigrant arrest for criminal activity:**
+
+  - There is higher amounts of arrests pre-campaign (highest), 
+  
+  - a lower number during the campaign (lowest), 
+  
+  - then a spike in numbers post-inauguration but not as high as Pre-campaign (2nd highest)
+
+**2) For number of arrest with out criminal activity:**
+  - Highest number of arrest occurred during "post-inauguration" of trump. This numbers are way higer than pre-campaign or during
+    campaign. 
+    
+**This suggests that when president Trump openly gave anti-immigrant speech people's tendency to report undocumented immigrants has increased significantly. That means people were reporting undocumented immigrants even when they are not doing any harm to anyone. This finding of ours validates the paper's statement that because government is supporting anti-immigrant activity people are more likely to report undocumented immigrants (even with out a crime)**
