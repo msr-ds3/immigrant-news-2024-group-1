@@ -12,12 +12,19 @@ To reproduce results, simply run the Makefile by typing make on the command line
 **For Replication**
   
 paper_replication_final.Rmd: Main analysis code in Rmarkdown format
+
 paper_replication_final.html: Rendered output from running analysis.Rmd containing all results and figures in the paper, this can also be viewed here: https://rpubs.com/ubaydulsami/paper-replication
+
 from_google_trends/google_3_terms_trend_data_04_20.csv: contains our obtained Google search data for reporting, crime, and welfare topics from 2024
+
 from_replication_files/google_trends_crime.csv: contains the original Google search data for crime used in the paper
+
 from_replication_files/google_trends_report.csv: contains the original Google search data for reporting used in the paper
+
 from_replication_files/google_trends_welfare.csv: contains the original google search data for welfare used in the paper
+
 from_replication_files/gt_report_daily.csv: contains daily google search data for reporting used for Table 4
+
 from_replication_files/gtopic_model_lite.Rdata: contains the topic model used for figures 3-4 and table 4
   
 **For Extended Research Question:**
