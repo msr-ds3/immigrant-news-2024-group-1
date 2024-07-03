@@ -636,11 +636,11 @@ model_report2 &lt;- lm(immigr_report ~ (ymd + president), data = google_term_dat
 <pre class="r"><code>library(stm)</code></pre>
 <pre><code>## stm v1.3.7 successfully loaded. See ?stm for help. 
 ##  Papers, resources, and other materials at structuraltopicmodel.com</code></pre>
-<pre class="r"><code>load(&quot;from_replication_files/TopicModel.Rdata&quot;)
-document_topics &lt;- make.dt(immigrFit, meta = out$meta)
-topic_terms &lt;- t(exp(immigrFit$beta$logbeta[[1]]))
-rownames(topic_terms) &lt;- out$vocab
-colnames(topic_terms) &lt;- sprintf(&quot;Topic%d&quot;, 1:ncol(topic_terms))</code></pre>
+<pre class="r"><code>load(&quot;from_replication_files/topic_model_lite.Rdata&quot;)
+# document_topics &lt;- make.dt(immigrFit, meta = out$meta)
+# topic_terms &lt;- t(exp(immigrFit$beta$logbeta[[1]]))
+# rownames(topic_terms) &lt;- out$vocab
+# colnames(topic_terms) &lt;- sprintf(&quot;Topic%d&quot;, 1:ncol(topic_terms))</code></pre>
 <pre class="r"><code>document_topics_figure &lt;- document_topics |&gt;
   mutate(date = as.Date(date),
          year_month = ym(format(date, &quot;%Y-%m&quot;)))
@@ -1233,7 +1233,7 @@ immigration crime” follows</h2>
 <h2>Now we will see what was the actual number of reporting of
 “immigration crime” during the given period:</h2>
 <pre class="r"><code>ice &lt;-
-  read_csv(&quot;from_google_trends/ice_reportings.csv&quot;, skip = 4, col_names = c(&quot;year&quot;, &quot;month&quot;, &quot;reports&quot;, &quot;reports_convicted&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;reports_non_criminal&quot;, &quot;&quot;, &quot;&quot;))|&gt;
+  read_csv(&quot;extended_research/ice_reportings.csv&quot;, skip = 4, col_names = c(&quot;year&quot;, &quot;month&quot;, &quot;reports&quot;, &quot;reports_convicted&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;reports_non_criminal&quot;, &quot;&quot;, &quot;&quot;))|&gt;
   select(c(1, 2, 3, 4, 8))|&gt;
   fill(year, .direction = &quot;down&quot;)|&gt; 
   filter(month != &quot;Total&quot;)|&gt;

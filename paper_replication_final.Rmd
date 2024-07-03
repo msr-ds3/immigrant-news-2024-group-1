@@ -136,11 +136,11 @@ stargazer(model_crime2, model_welfare2, model_report2,
 
 ```{r, warning=FALSE}
 library(stm)
-load("from_replication_files/TopicModel.Rdata")
-document_topics <- make.dt(immigrFit, meta = out$meta)
-topic_terms <- t(exp(immigrFit$beta$logbeta[[1]]))
-rownames(topic_terms) <- out$vocab
-colnames(topic_terms) <- sprintf("Topic%d", 1:ncol(topic_terms))
+load("from_replication_files/topic_model_lite.Rdata")
+# document_topics <- make.dt(immigrFit, meta = out$meta)
+# topic_terms <- t(exp(immigrFit$beta$logbeta[[1]]))
+# rownames(topic_terms) <- out$vocab
+# colnames(topic_terms) <- sprintf("Topic%d", 1:ncol(topic_terms))
 ```
 
 ```{r}
@@ -335,7 +335,6 @@ stargazer(model_report_table4_day,
 
 # Extension
 
-
 ## The paper shows increase in search of how to report of immigration violation but doesn't show if there were actual increase in number of reports / arrest/ deportation for immigration violation. For our research question we decided to find out if there was any increase of actual number of reports / arrest/ deportation for immigration violation.
 
 **Data source :** <https://www.dhs.gov/ohss/topics/immigration/enforcement-and-legal-processes-monthly-tables>
@@ -375,7 +374,7 @@ google_term_data_report_extend |>
 ```{r}
 
 ice <-
-  read_csv("from_google_trends/ice_reportings.csv", skip = 4, col_names = c("year", "month", "reports", "reports_convicted", "", "", "", "reports_non_criminal", "", ""))|>
+  read_csv("extended_research/ice_reportings.csv", skip = 4, col_names = c("year", "month", "reports", "reports_convicted", "", "", "", "reports_non_criminal", "", ""))|>
   select(c(1, 2, 3, 4, 8))|>
   fill(year, .direction = "down")|> 
   filter(month != "Total")|>
@@ -450,26 +449,24 @@ So for research we decided to look at data from Law enforcement to see if there 
 
 ## Our Process:
 
-We looked into the immigrant arrest data from 3 point of view, 
+We looked into the immigrant arrest data from 3 point of view,
 
-1) Total number of immigrant arrest from January 2014 to December 2019 
+1)  Total number of immigrant arrest from January 2014 to December 2019
 
-2) Number of Immigrant arrested for committing crime
+2)  Number of Immigrant arrested for committing crime
 
-3) Number of Immigrant arrested even without committing a crime 
+3)  Number of Immigrant arrested even without committing a crime
 
 ## Observation Result
 
 **1) For Total number of arrest & for immigrant arrest for criminal activity:**
 
-  - There is higher amounts of arrests pre-campaign (highest), 
-  
-  - a lower number during the campaign (lowest), 
-  
-  - then a spike in numbers post-inauguration but not as high as Pre-campaign (2nd highest)
+-   There is higher amounts of arrests pre-campaign (highest),
 
-**2) For number of arrest with out criminal activity:**
-  - Highest number of arrest occurred during "post-inauguration" of trump. This numbers are way higer than pre-campaign or during
-    campaign. 
-    
+-   a lower number during the campaign (lowest),
+
+-   then a spike in numbers post-inauguration but not as high as Pre-campaign (2nd highest)
+
+**2) For number of arrest with out criminal activity:** - Highest number of arrest occurred during "post-inauguration" of trump. This numbers are way higer than pre-campaign or during campaign.
+
 **This suggests that when president Trump openly gave anti-immigrant speech people's tendency to report undocumented immigrants has increased significantly. That means people were reporting undocumented immigrants even when they are not doing any harm to anyone. This finding of ours validates the paper's statement that because government is supporting anti-immigrant activity people are more likely to report undocumented immigrants (even with out a crime)**
